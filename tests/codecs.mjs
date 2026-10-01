@@ -16,6 +16,8 @@ for (const codec of ['hevc', 'vvc']) {
   for (const extension of ['mkv', 'mov']) encode(['-i', sources[codec], '-c', 'copy', `${directory}/${codec}-software.${extension}`]);
 }
 encode(['-display_rotation:v:0', '90', '-i', sources.hevc, '-c', 'copy', `${directory}/hevc-rotated.mov`]);
+encode(['-f', 'lavfi', '-i', 'testsrc=size=320x192:rate=30:duration=4', '-c:v', 'libx265', '-preset', 'ultrafast', '-pix_fmt', 'yuv444p10le', '-x265-params', 'log-level=error:keyint=30:bframes=3', `${directory}/hevc-444.mkv`]);
+encode(['-f', 'lavfi', '-i', 'testsrc=size=3840x2160:rate=5:duration=0.4', '-c:v', 'libx265', '-preset', 'ultrafast', '-pix_fmt', 'yuv444p10le', '-x265-params', 'log-level=error:pools=4:bframes=3', `${directory}/hevc-444-4k.mkv`]);
 const server = createServer(); await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
 const origin = `http://localhost:${server.address().port}`, reports = [];
 try {
@@ -58,6 +60,15 @@ try {
       assert.match(await page.locator('#info0').textContent(), /192×320/);
       assert.match(await page.locator('#color0').textContent(), /RGB 回退/);
       await page.goto(origin + '/web-compare/');
+      await page.locator('#file0').setInputFiles(`${directory}/hevc-444.mkv`); await ready();
+      assert.match(await page.locator('#color0').textContent(), /I444P10 原始色度/);
+      await page.goto(origin + '/web-compare/');
+      await page.locator('#file0').setInputFiles(`${directory}/hevc-444-4k.mkv`); await ready();
+      assert.match(await page.locator('#info0').textContent(), /3840×2160/);
+      assert.match(await page.locator('#color0').textContent(), /I444P10 原始色度/);
+      await page.locator('#next').click();
+      await page.waitForFunction(() => document.getElementById('info0').textContent.includes('帧 2/'));
+      await page.goto(origin + '/web-compare/');
       await page.locator('#file0').setInputFiles(sources.vvc); await ready();
       await page.locator('#file1').setInputFiles(sources.hevc); await ready(page, 1);
       await page.locator('#layout').selectOption('ab');
@@ -84,12 +95,23 @@ try {
       assert.ok(new Set(frames).size >= 8 && new Set(frames).size >= mutedFrames * .55, `Audio frame throughput ${new Set(frames).size} vs muted ${mutedFrames}`);
       await page.screenshot({ path: `${directory}/${channel}-software.png` });
       await page.route('**/sandbox', route => route.fulfill({ contentType: 'text/html', body: `<iframe sandbox="allow-scripts allow-downloads allow-forms allow-modals" src="${origin}/web-compare/"></iframe>` }));
+      await page.context().route('**/web-compare/**', async route => {
+        const url = new URL(route.request().url());
+        if (/software-worker\.js$|vendor\/codecs\/.*\.(js|wasm)$/.test(url.pathname) && url.searchParams.get('v') !== '0.3.1') return route.fulfill({ status: 404, body: 'Stale CDN cache' });
+        const response = await route.fetch();
+        await route.fulfill({ response, headers: { ...response.headers(), 'Content-Security-Policy': "sandbox allow-scripts allow-downloads allow-forms allow-modals; default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval'; connect-src 'self' https: http:; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; media-src 'self' blob:" } });
+      });
       await page.goto(origin + '/sandbox'); const embedded = page.frameLocator('iframe');
       await embedded.locator('#file0').setInputFiles(sources.vvc); await ready(embedded);
       await embedded.locator('#audio').selectOption('0:0'); await embedded.locator('#play').click(); await page.waitForTimeout(800);
       assert.equal(await embedded.locator('#play').textContent(), '暂停', await embedded.locator('#status').textContent());
+      await embedded.locator('#play').click();
+      await page.context().route('**/vendor/codecs/*.wasm?*', route => route.abort('failed'));
+      await embedded.locator('#file1').setInputFiles(`${directory}/hevc-444.mkv`);
+      await embedded.locator('#info1').filter({ hasText: '加载失败' }).waitFor();
+      assert.match(await embedded.locator('#status').textContent(), /解码资源请求失败.*wasm.*v=0.3.1/);
       assert.deepEqual(errors, []);
-      reports.push({ channel, status: 'passed', codecs: 'HEVC/VVC Main10 in MP4/MKV/MOV; HEVC native decoder disabled', audioFrames: new Set(frames).size, mutedFrames, checks: ['seek/forward/backward exact PTS', 'raw 10-bit YUV', 'MOV rotation', 'dual software A/B with selected audio', 'audio/muted throughput comparison', 'no backwards audio pre-roll', 'volume without restart', 'opaque-origin Worker/WASM/audio'] });
+      reports.push({ channel, status: 'passed', codecs: 'HEVC/VVC Main10 in MP4/MKV/MOV; HEVC Rext I444P10; HEVC native decoder disabled', audioFrames: new Set(frames).size, mutedFrames, checks: ['seek/forward/backward exact PTS', 'raw 10-bit YUV including 4:4:4', 'MOV rotation', 'dual software A/B with selected audio', 'audio/muted throughput comparison', 'no backwards audio pre-roll', 'volume without restart', 'blog CSP / opaque-origin Worker/WASM/audio', 'versioned assets avoid stale cache', 'failed fetch identifies WASM URL'] });
       console.log(channel, reports.at(-1));
     } finally { await browser.close(); }
   }

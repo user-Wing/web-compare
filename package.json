@@ -1,6 +1,6 @@
 {
   "name": "web-compare",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "license": "MIT",
   "repository": { "type": "git", "url": "https://github.com/user-Wing/web-compare.git" },

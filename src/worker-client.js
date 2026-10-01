@@ -1,6 +1,6 @@
+import { fetchAsset } from './assets.js';
 export async function createWorkerClient(name, base, progress = () => {}) {
-  const response = await fetch(new URL(name, base));
-  if (!response.ok) throw new Error(`Worker 加载失败：${name} (${response.status})`);
+  const response = await fetchAsset(name, base);
   const url = URL.createObjectURL(new Blob([await response.text()], { type: 'text/javascript' }));
   const worker = new Worker(url), pending = new Map();
   let sequence = 0;

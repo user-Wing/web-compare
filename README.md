@@ -4,7 +4,7 @@
 
 源码仓库：[user-Wing/web-compare](https://github.com/user-Wing/web-compare)。项目自有代码采用 [MIT License](LICENSE)，第三方依赖许可见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
 
-## 功能（0.3.0）
+## 功能（0.3.1）
 
 - 最多九路 MP4/MKV/MOV，单独选择、批量拖入、交换窗格和移除。
 - 两路并排/AB；三路并排、横三段、纵三段、左一右二、右一左二；四路网格/ABCD；五至九路网格。
@@ -53,6 +53,10 @@ HEVC 原生解码不可用（或首帧解码失败）时自动使用随包 WASM�
 首帧先显示，再扫描包时间戳建立索引，只保留时间戳及有限解码帧。大文件首次索引仍可能等待；不承诺九路 4K 实时。
 
 软件路径目前先在 Worker 中扫描 PTS，再显示首帧，大文件导入可能比原生路径慢。部署需保留 `vendor/codecs/`，允许 Blob Worker/WASM；opaque-origin iframe 所用静态 JS/WASM 需提供无凭据 CORS。无需 SharedArrayBuffer 或 COOP/COEP，不要为此放宽账号/API 的跨域策略。
+
+0.3.1 为页面脚本、Worker、解码脚本和 WASM 加入版本查询参数，避免 CDN/浏览器缓存混用旧版本。更新必须替换完整目录；若入口 HTML 也被缓存，请清除该入口缓存或用 `index.html?v=0.3.1` 打开。资源请求失败会显示具体 URL/HTTP 状态，便于区分网络/CORS/CSP 与解码错误。
+
+新增 HEVC Rext `yuv444p10le`（含合成 3840×2160）及博客 CSP/旧缓存/请求失败回归。用户提供的 1920×804 VVC Main10 长片已验证本机首帧、逐帧及 60 秒跳转，以及绕过旧缓存的公网首帧；远端 HEVC 文件已核对为 4K Rext 4:4:4 10-bit，但未对该整部文件进行播放实测。
 
 Windows Chromium 145 和本机 Edge 已通过自动回归：三容器、H.264 B 帧、双路 2160p 跳转、PTS/偏移/逐帧、全部多路布局、九源、独立缩放、AAC 调度、AB 像素、窗口/全屏、窄屏及 opaque-origin iframe。合成 YUV 验证矩阵/范围、十一色度核、缩放核与 10-bit 中性色。音频未做人工听感校验。
 

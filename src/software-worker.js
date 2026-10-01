@@ -1,3 +1,4 @@
+import { assetUrl, fetchAsset } from './assets.js';
 let av, formatContext, stream, decoder, packet, decoded = [], current = null, ended = false;
 let timestamps = [], keys = [], origin = 0;
 const integer = (lo, hi = 0) => (lo >>> 0) + hi * 4294967296;
@@ -47,8 +48,14 @@ async function frameAt(time) {
 }
 async function open({ file, base }) {
   const codecs = new URL('vendor/codecs/', base).href;
-  importScripts(codecs + 'libav-6.10.9.0-web-compare.js');
-  av = await LibAV.LibAV({ base: codecs.replace(/\/$/, ''), wasmurl: codecs + 'libav-6.10.9.0-web-compare.wasm.wasm', noworker: true, noes6: true });
+  const wasmBinary = await (await fetchAsset('libav-6.10.9.0-web-compare.wasm.wasm', codecs)).arrayBuffer();
+  const loader = assetUrl('libav-6.10.9.0-web-compare.js', codecs);
+  const engine = assetUrl('libav-6.10.9.0-web-compare.wasm.js', codecs);
+  for (const url of [loader, engine]) {
+    try { importScripts(url); }
+    catch (error) { throw new Error(`解码脚本加载失败：${url}；${error.message}`); }
+  }
+  av = await LibAV.LibAV({ factory: options => LibAVFactory({ ...options, wasmBinary: new Uint8Array(wasmBinary) }), noworker: true, noes6: true });
   av.onblockread = async (name, position, length) => {
     try { await av.ff_block_reader_dev_send(name, position, new Uint8Array(await file.slice(position, position + length).arrayBuffer())); }
     catch { await av.ff_block_reader_dev_send(name, position, null); }

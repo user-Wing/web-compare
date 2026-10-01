@@ -5,7 +5,7 @@
   "description": "本地最多九路视频、帧级同步、AB/ABC/ABCD 滑块、多算法缩放与独立色度重建；不上传视频，无需安装。",
   "category": "utility",
   "category_name": "实用辅助工具",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "entry": "index.html",
   "visibility": ["guest", "user", "moderator", "admin"],
   "test": true,

@@ -19,7 +19,7 @@ export class VideoLane {
       lane.file = file;
       const first = await track.getFirstTimestamp();
       lane.origin = first;
-      try { lane.current = await lane.sink.getSample(first); }
+      try { lane.current = await lane.sink.getSample(first); if (!lane.current) throw new Error('未能解码首帧。'); }
       catch (error) {
         if (codec !== 'hevc') throw error;
         await lane.close();

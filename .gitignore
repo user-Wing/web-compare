@@ -1,0 +1,7 @@
+node_modules/
+test-results/
+dist/
+*.7z
+*.log
+.env
+.env.*

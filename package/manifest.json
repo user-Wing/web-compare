@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "id": "web-compare",
+  "name": "视频对比",
+  "description": "本地最多九路视频、帧级同步、AB/ABC/ABCD 滑块、多算法缩放与独立色度重建；不上传视频，无需安装。",
+  "category": "utility",
+  "category_name": "实用辅助工具",
+  "version": "0.2.0",
+  "entry": "index.html",
+  "visibility": ["guest", "user", "moderator", "admin"],
+  "test": true,
+  "mirror": true,
+  "keywords": ["视频", "MP4", "MKV", "MOV", "多路对比", "AB", "Nearest", "色度", "放大"],
+  "open_source": [
+    { "name": "Mediabunny", "url": "https://github.com/Vanilagy/mediabunny", "license": "MPL-2.0" },
+    { "name": "Super-XBR", "url": "https://github.com/zachsaw/MPDN_Extensions", "license": "MIT" }
+  ]
+}

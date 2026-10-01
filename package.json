@@ -1,0 +1,16 @@
+{
+  "name": "web-compare",
+  "version": "0.2.0",
+  "private": true,
+  "license": "MIT",
+  "repository": { "type": "git", "url": "https://github.com/user-Wing/web-compare.git" },
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "start": "node scripts/serve.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "test:browser": "node tests/browser.mjs"
+  },
+  "dependencies": { "mediabunny": "1.61.0" },
+  "devDependencies": { "esbuild": "0.25.12", "playwright": "1.58.2" }
+}

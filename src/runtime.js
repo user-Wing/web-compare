@@ -3,13 +3,13 @@ import { AudioPlayer } from './audio.js';
 import { GpuRenderer } from './renderer.js';
 import { KERNELS } from './kernels.js';
 import { layoutChoices, regions, handles, isWipe, assignSource } from './layout.js';
-import { clamp, fittedScale, frameIndex, zoomAt, LatestQueue } from './math.js';
+import { clamp, playbackPosition, fittedScale, frameIndex, zoomAt, LatestQueue } from './math.js';
 
 const letters = 'ABCDEFGHI';
 const newView = () => ({ scale: 1, x: 0, y: 0, fit: true });
 const options = (items, selected) => items.map(([value, label]) => `<option value="${value}"${String(value) === String(selected) ? ' selected' : ''}>${label}</option>`).join('');
 
-export function mount(root) {
+export function mount(root, base = new URL('.', location.href).href) {
   root.innerHTML = `
     <header><div><h1>Web Compare <small>多路视频对比</small></h1><p>最多九路 · 实际 PTS · GPU 重建与缩放 ｜ 本地处理，不上传视频</p></div>
       <label class="file-label">添加视频 <input id="files" type="file" multiple accept=".mp4,.mkv,.mov"></label>
@@ -61,7 +61,7 @@ export function mount(root) {
   const sync = () => isWipe(mode) || syncPreference;
   const refSource = () => visible().find(i => lanes[i]) ?? active;
   const fail = error => { pause(); status(error.message || String(error)); };
-  const audio = new AudioPlayer(fail);
+  const audio = new AudioPlayer(fail, base);
   const queue = new LatestQueue(async (request, current) => {
     const preview = typeof request === 'object', target = preview ? request.time : request;
     if (!renderer || !gpuReady || (!preview && loading.some(Boolean))) return;
@@ -161,7 +161,7 @@ export function mount(root) {
   function seek(target) { pause(); queue.request(clamp(target, 0, duration())); }
   function tick() {
     if (!playing || disposed) return;
-    const target = clamp(anchorTime + now() - anchorClock, 0, duration());
+    const target = playbackPosition(anchorTime, now() - anchorClock, duration());
     if (!queue.running) queue.request(target);
     if (target >= duration()) { pause(); queue.request(duration()); } else raf = requestAnimationFrame(tick);
   }
@@ -177,7 +177,7 @@ export function mount(root) {
         if (!clock || version !== playVersion) return; now = clock.now; anchorClock = clock.clock;
       }
       if (version !== playVersion) return; playing = true; controls(); raf = requestAnimationFrame(tick);
-    } catch (error) { fail(error); }
+    } catch (error) { if (version === playVersion) fail(error); }
   }
   function step(direction) {
     const lane = reference(); if (!lane || loading.some(Boolean)) return;
@@ -195,7 +195,7 @@ export function mount(root) {
         if (token !== tokens[i] || disposed) return; lanes[i] = preview;
         $('info' + i).textContent = count ? `正在建立帧索引：${count} 帧` : '正在显示首帧、建立帧索引…';
         if (!count) { refreshSources(true); queue.request({ time }); }
-      }, () => token !== tokens[i] || disposed);
+      }, () => token !== tokens[i] || disposed, base);
       if (token !== tokens[i] || disposed) { await lane.close(); return; }
       lanes[i] = lane; loading[i] = false; refreshSources(true);
       if (!loading.some(Boolean)) seek(Math.min(time, duration()));
@@ -240,7 +240,7 @@ export function mount(root) {
     mode = event.target.value; split = { x: mode === 'abc-row' ? 1 / 3 : .5, x2: 2 / 3, y: mode === 'abc-column' ? 1 / 3 : .5, y2: 2 / 3 }; refreshLayout();
   };
   $('sync').onchange = () => { syncPreference = $('sync').checked; draw(); }; $('master').onchange = event => { master = Number(event.target.value); seek(time); };
-  $('audio').onchange = () => seek(time); $('volume').oninput = () => { if (playing) { pause(); void play(); } };
+  $('audio').onchange = () => seek(time); $('volume').oninput = () => audio.setVolume(Number($('volume').value));
   for (const id of ['upscale', 'downscale']) $(id).onchange = draw;
   for (const id of ['chroma', 'anti', 'siting']) $(id).onchange = () => seek(time);
   function applyView(value) { (sync() ? visible() : [active]).forEach(i => { views[i] = { ...value }; }); draw(); }

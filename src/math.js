@@ -1,4 +1,6 @@
 export const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+// An audio pre-roll must hold the selected frame, not seek backwards into the previous GOP.
+export const playbackPosition = (start, elapsed, duration) => clamp(start + Math.max(0, elapsed), 0, duration);
 
 // Last presentation timestamp at or before the requested time (also handles VFR).
 export function frameIndex(timestamps, time) {

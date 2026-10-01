@@ -199,7 +199,7 @@ try {
       await loadPair(embedded); await seek(embedded, 2);
       assert.deepEqual(frameNumbers(await frames(embedded)), [61, 61]);
       assert.deepEqual(errors, []);
-      assert.equal(requests.some(r => r.method !== 'GET' || !r.url.startsWith(origin)), false, 'No uploads or CDN calls');
+      assert.equal(requests.some(r => r.method !== 'GET' || (!r.url.startsWith(origin) && !r.url.startsWith('blob:'))), false, 'No uploads or CDN calls');
       reports.push({ channel, status: 'passed', checks: ['MP4/MKV/MOV', 'H264 B-frames', 'PTS seek/step', 'seek coalescing', 'paired playback', 'offset and per-source frame alignment', 'different frame rates', 'AB clipping pixel equality', 'pan pixel equality before/after zoom', 'resize/fullscreen', 'mobile layout', 'dual 2160p seek', 'all ABC layouts/ABCD', 'source assignment swap', 'independent zoom', 'nine-source grid', 'AAC selected-source audio', 'master selection', 'remove preserves other sessions', 'opaque-origin iframe', 'no uploads'], gpuResults, initialPixels: pixels });
       console.log(`${channel}: passed`);
     } finally { await browser.close(); }

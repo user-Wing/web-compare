@@ -1,8 +1,9 @@
 import { Input, BlobSource, ALL_FORMATS, VideoSampleSink, EncodedPacketSink } from 'mediabunny';
 import { frameIndex } from './math.js';
+import { SoftwareVideoLane } from './software-video.js';
 
 export class VideoLane {
-  static async open(file, progress, cancelled = () => false) {
+  static async open(file, progress, cancelled = () => false, base = new URL('.', location.href).href) {
     if (!/\.(mp4|mkv|mov)$/i.test(file.name)) throw new Error('当前版本只接受 MP4 / MKV / MOV 视频。');
     const input = new Input({ source: new BlobSource(file), formats: ALL_FORMATS });
     let lane;
@@ -11,12 +12,20 @@ export class VideoLane {
       if (!track) throw new Error('文件中没有视频轨道。');
       const codec = await track.getCodec();
       if (!await track.canDecode()) {
+        if (codec === 'hevc' || codec === null) return await SoftwareVideoLane.open(file, input, progress, cancelled, base);
         throw new Error(`当前浏览器或设备无法解码 ${codec || '此编码'}。MKV 是容器，不代表其内部所有编码都受支持。`);
       }
       lane = new VideoLane(input, track, file.name, codec);
+      lane.file = file;
       const first = await track.getFirstTimestamp();
       lane.origin = first;
-      lane.current = await lane.sink.getSample(first);
+      try { lane.current = await lane.sink.getSample(first); }
+      catch (error) {
+        if (codec !== 'hevc') throw error;
+        await lane.close();
+        const fallbackInput = new Input({ source: new BlobSource(file), formats: ALL_FORMATS });
+        return await SoftwareVideoLane.open(file, fallbackInput, progress, cancelled, base);
+      }
       if (!lane.current) throw new Error('未能解码首帧。');
       progress(lane, 0);
       const pts = [];

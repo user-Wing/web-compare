@@ -15,4 +15,7 @@
 
 不包含 madVR 专有代码或 NGU 算法；相同核名称不意味着输出逐像素相同。
 
-工具包不含 FFmpeg、3FP、VapourSynth、本地解码服务或转码程序。
+工具包包含 FFmpeg 9.0 / libav.js 6.10.9.0 的 HEVC/VVC 解码专用 WASM 模块（LGPL-2.1-or-later，包装代码 ISC），不是原生 FFmpeg 可执行文件。
+完整许可、构建说明及 Emscripten 许可位于 `vendor/codecs/`；对应源码快照、FFmpeg 源码和 emfiberthreads 源码位于 `vendor/codecs-source/`，仓库内 `scripts/build-codecs.sh` 可重建替换模块。没有修改上游算法代码，仅使用自定义构建配置。
+
+不含 3FP、VapourSynth、本地解码服务、编码器或转码程序。第三方开源许可并不授予 HEVC/VVC 编码标准的专利许可。
